@@ -2,7 +2,7 @@
     <string name="app_name">CamApp</string>
     <string name="action_settings">Settings</string>
     <string name="voodoo_settings">Voodoo Settings</string>
-    <string name="msg_saved">Image has been saved.</string>
+    <string name="msg_saved">Nase wurde gespeichert.</string>
     <string name="msg_save_error">Error! Zu viel Nase!</string>
     <string name="welcome_title">Info</string>
     <string name="welcome_msg">developed at BONNKMI14. TANNENBUSCH NUTTTÖÖÖ</string>
