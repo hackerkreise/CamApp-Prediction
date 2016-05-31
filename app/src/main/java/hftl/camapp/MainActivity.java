@@ -51,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     static final int QUANTIZE = 1;  /* do quantisation before displaying the image   */
     static final int SAMPLENHOLD = 2;  /*  make image blocky    */
     static final int VOODOO = 3;  /* do voodoo before displaying the image   */
+    static final int BONNKMI14 = 4; //Bester Modus!
     /* defines of CooDoo settings   */
     static final int OFFSET_A = 0; /*     */
     static final int OFFSET_B = 1;  /*   */
@@ -300,6 +301,11 @@ public class MainActivity extends AppCompatActivity {
                         if (save_flag) saveImage(mMat);
                         return mMat;
 
+                    case BONNKMI14:
+                        mMat = getBONNKMI14Image(inputFrame.rgba());
+                        if (save_flag) saveImage(mMat);
+                        return mMat;
+
                     case 0:      /* no modification */
                     default:
                         if (save_flag) saveImage(inputFrame.rgba());
@@ -356,7 +362,7 @@ public class MainActivity extends AppCompatActivity {
       */
     private void createModeMenu() {
         AlertDialog.Builder builder = new AlertDialog.Builder( this);
-        final String[] modeS = {"None", "Quantizer", "Sample'nHold", "Voodoo"};
+        final String[] modeS = {"None", "Quantizer", "Sample'nHold", "Voodoo", "BONNKMI14"};
         builder.setTitle( "Choose Method:");
         builder.setSingleChoiceItems( modeS, mode, new DialogInterface.OnClickListener() {
             @Override
@@ -383,6 +389,7 @@ public class MainActivity extends AppCompatActivity {
         final String[] pixelOptions = { "2 x 2 pix", "4 x 4 pix", "6 x 6 pix", "8 x 8 pix",
                  "10 x 10 pix", "12 x 12 pix", "14 x 14 pix", "16 x 16 pix"};
         final String[] voodooOptions = { "Offset A", "Offset B"};
+        final String[] BONNKMI14Options = { "Nase", "Mensch"};
         if (mode == QUANTIZE) {
             clusterBuilder.setTitle( "Choose number of bit shifts:");
             /* quant_mode defines the number of bit shifts, this must be mapped to the
@@ -423,6 +430,23 @@ public class MainActivity extends AppCompatActivity {
                             dialog.dismiss();
                         }
                     });
+
+
+        }
+
+        else if (mode == BONNKMI14){
+            clusterBuilder.setTitle("Nasenlänge auswählen ");
+                /*                  */
+            clusterBuilder.setSingleChoiceItems( BONNKMI14Options, voodoo_mode,
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick( DialogInterface dialog, int item) {
+                            voodoo_mode = item;
+                            dialog.dismiss();
+                        }
+                    });
+
+
         }
         clusterBuilder.show();
     }    /* show options button  */
@@ -604,6 +628,71 @@ public class MainActivity extends AppCompatActivity {
         return inputFrame;
     }
 
+    /* BONNKMI14Image   */
+    private Mat getBONNKMI14Image( Mat inputFrame) {
+        // inputFrame is a Mat structure in RGBA format
+        Boolean focus_flag;
+        int x, y, x2, y2, diff_x, diff_y, yy, xx;
+        int py, pos, pos2;
+        int radius2;
+        double off;
+        double xd, yd, wx, wy;
+        int channels = inputFrame.channels();
+        int width = inputFrame.width();
+        int height = inputFrame.height();
+        int isize = height * width * channels; /* compute total size of required attay  */
+        byte buff1[] = new byte[isize];      /* allocate memory for image data   */
+        byte buff2[] = new byte[isize];      /* allocate memory for image data   */
+        final int stride = width * channels;
+
+        /* make a copy when in-place operation is not possible */
+        Mat cloneFrame = inputFrame.clone();
+
+         /* make voodoo parameter dependent on displayed size  */
+        if (maxFrameWidth < maxFrameHeight) voodoo_diff = maxFrameWidth >> voodoo_diff_shift;
+        else  voodoo_diff = maxFrameHeight >> voodoo_diff_shift;
+        radius2 = voodoo_diff * voodoo_diff;
+
+        if (voodoo_mode == OFFSET_A) off = voodoo_diff;
+        else if (voodoo_mode == OFFSET_B) off = (3 * voodoo_diff) / 2;
+        else off = voodoo_diff/2;
+
+        inputFrame.get( 0, 0, buff1); /* get address of original data array  */
+        cloneFrame.get( 0, 0, buff2); /* get address of copied data array  */
+        /* for all blocks in vertical direction */
+        for (y = 0, py = 0; y < height; y++, py += stride) {
+            diff_y = y - voodoo_y; /* get vertical focus of effect   */
+            yy = diff_y * diff_y;
+            /* for all blocks in horizontal direction */
+            for (x = 0, pos = py; x < width; x++, pos += channels) {
+                diff_x = x - voodoo_x; /* get horizontal focus of effect   */
+                xx = diff_x * diff_x;
+                if (xx + yy < radius2) {
+                    /* get new x position   */
+                    xd = (x + off);
+                    x2 = (int) Math.floor(xd);
+                    x2 = Math.max(0, Math.min(x2, width - 2)); /*  ckeck border  */
+                    /* get new y position   */
+                    yd = (y );
+                    y2 = (int) Math.floor(yd);
+                    y2 = Math.max(0, Math.min(y2, height - 2)); /* ckeck border  */
+                    pos2 = x2 * channels + y2 * stride;
+
+                    buff1[pos] = buff2[pos2];
+                    buff1[pos + 1] = buff2[pos2 + 1];
+                    buff1[pos + 2] = buff2[pos2 + 2];
+                }
+            }
+        }
+
+        inputFrame.put( 0, 0, buff1); /* put modified data array back to inputFrame */
+        cloneFrame.release();  /* release copied data   */
+
+        return inputFrame;
+    }
+
+
+
     /* generate filename and save image */
     /**
      * Das Speichern des momentan angezeigten Bildes als PNG-File im Ordner QPic unter Pictures.
@@ -625,8 +714,12 @@ public class MainActivity extends AppCompatActivity {
             postFix.append("_").append( pixel_mode).append("_block");
         }
         else if (mode == VOODOO) {
-            postFix.append("_").append( pixel_mode).append("_voodoo");
+            postFix.append("_").append(pixel_mode).append("_voodoo");
         }
+        else if (mode == BONNKMI14) {
+                postFix.append("_").append( pixel_mode).append("_SSIO");
+            }
+
         String filename = new SimpleDateFormat( "yyyy-MM-dd_HH-mm-ss", Locale.GERMAN).format(new Date()) + postFix.toString() + ".png";
 
         File file = new File( path, filename);

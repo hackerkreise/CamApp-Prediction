@@ -3,7 +3,7 @@
     <string name="action_settings">Settings</string>
     <string name="voodoo_settings">Voodoo Settings</string>
     <string name="msg_saved">Image has been saved.</string>
-    <string name="msg_save_error">Error! Image could not be saved.</string>
+    <string name="msg_save_error">Error! Zu viel Nase!</string>
     <string name="welcome_title">Info</string>
-    <string name="welcome_msg">developed at:\nLeipzig University of Telecommunications\nProf.Dr.-Ing. T.Strutz</string>
+    <string name="welcome_msg">developed at BONNKMI14. TANNENBUSCH NUTTTÖÖÖ</string>
 </resources>
