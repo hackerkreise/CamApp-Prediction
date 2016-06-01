@@ -35,7 +35,10 @@ import java.io.File;
 import java.lang.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     /* gloabal class variables  */
@@ -739,5 +742,59 @@ public class MainActivity extends AppCompatActivity {
         }
         /**/
     }
+
+    public List entropylist (Mat inputFrame){
+        Map<String, Integer> entropylist = new HashMap<String, Integer>();
+
+        Long size = inputFrame.total() * inputFrame.channels();
+        int isize = size.intValue();
+        byte buff[] = new byte[isize];
+        int shift = quant_mode;
+        inputFrame.get(0, 0, buff);
+
+        int pos = 0;
+        for (byte b : buff) // four components
+
+        {
+            // das byte wird durch eine Bitverschiebung nach rechts und links um eine Bitanzahl gekürzt
+            // buff[pos] = (byte) ((b >> shift) << shift);
+            byte x = buff[pos];
+            String s = new String(buff);
+
+            entropylist.put (s);
+            pos++;
+            // ignore Alpha
+        }
+
+
+
+
+
+        return entropylist;
+    }
+    public static Double ShannonEntropierechnen(List<String> values) {
+        Map<String, Integer> map = new HashMap<String, Integer>();
+
+
+
+        // count the occurrences of each value
+        for (String sequence : values) {
+            if (!map.containsKey(sequence)) {
+                map.put(sequence, 0);
+            }
+            map.put(sequence, map.get(sequence) + 1);
+        }
+
+        // calculate the entropy
+        Double result = 0.0;
+        for (String sequence : map.keySet()) {
+            Double frequency = (double) map.get(sequence) / values.size();
+            result -= frequency * (Math.log(frequency) / Math.log(2));
+        }
+
+        return result;
+    }
+
+
 
 }
