@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     static final int QUANTIZE = 1;  /* do quantisation before displaying the image   */
     static final int SAMPLENHOLD = 2;  /*  make image blocky    */
     static final int VOODOO = 3;  /* do voodoo before displaying the image   */
-    static final int BONNKMI14 = 4; //Bester Modus!
+    static final int BONNKMI14 = 4; //Modusnummer definieren
     /* defines of CooDoo settings   */
     static final int OFFSET_A = 0; /*     */
     static final int OFFSET_B = 1;  /*   */
@@ -301,7 +301,7 @@ public class MainActivity extends AppCompatActivity {
                         if (save_flag) saveImage(mMat);
                         return mMat;
 
-                    case BONNKMI14:
+                    case BONNKMI14: //Bild mit neuem Modus speichern
                         mMat = getBONNKMI14Image(inputFrame.rgba());
                         if (save_flag) saveImage(mMat);
                         return mMat;
@@ -362,7 +362,7 @@ public class MainActivity extends AppCompatActivity {
       */
     private void createModeMenu() {
         AlertDialog.Builder builder = new AlertDialog.Builder( this);
-        final String[] modeS = {"None", "Quantizer", "Sample'nHold", "Voodoo", "BONNKMI14"};
+        final String[] modeS = {"None", "Quantizer", "Sample'nHold", "Voodoo", "BONNKMI14"}; //Neuen Modus zum Menü hinzugefügt
         builder.setTitle( "Choose Method:");
         builder.setSingleChoiceItems( modeS, mode, new DialogInterface.OnClickListener() {
             @Override
@@ -389,7 +389,7 @@ public class MainActivity extends AppCompatActivity {
         final String[] pixelOptions = { "2 x 2 pix", "4 x 4 pix", "6 x 6 pix", "8 x 8 pix",
                  "10 x 10 pix", "12 x 12 pix", "14 x 14 pix", "16 x 16 pix"};
         final String[] voodooOptions = { "Offset A", "Offset B"};
-        final String[] BONNKMI14Options = { "Nase", "Mensch"};
+        final String[] BONNKMI14Options = { "Nase", "Mensch"}; //Optionen des Modus als String bereitstellen
         if (mode == QUANTIZE) {
             clusterBuilder.setTitle( "Choose number of bit shifts:");
             /* quant_mode defines the number of bit shifts, this must be mapped to the
@@ -435,7 +435,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         else if (mode == BONNKMI14){
-            clusterBuilder.setTitle("Nasenlänge auswählen ");
+            clusterBuilder.setTitle("Nasenlänge auswählen "); //options Menü für neuen Modus
                 /*                  */
             clusterBuilder.setSingleChoiceItems( BONNKMI14Options, voodoo_mode,
                     new DialogInterface.OnClickListener() {
@@ -628,7 +628,7 @@ public class MainActivity extends AppCompatActivity {
         return inputFrame;
     }
 
-    /* BONNKMI14Image   */
+    /* BONNKMI14Image vorerst mit VODOO Funktion kopiert als Gerüst  */
     private Mat getBONNKMI14Image( Mat inputFrame) {
         // inputFrame is a Mat structure in RGBA format
         Boolean focus_flag;
@@ -717,7 +717,7 @@ public class MainActivity extends AppCompatActivity {
             postFix.append("_").append(pixel_mode).append("_voodoo");
         }
         else if (mode == BONNKMI14) {
-                postFix.append("_").append( pixel_mode).append("_SSIO");
+                postFix.append("_").append( pixel_mode).append("_SSIO"); // Filename Suffix für neuen Modus
             }
 
         String filename = new SimpleDateFormat( "yyyy-MM-dd_HH-mm-ss", Locale.GERMAN).format(new Date()) + postFix.toString() + ".png";
