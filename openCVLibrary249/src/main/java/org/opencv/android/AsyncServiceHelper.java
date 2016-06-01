@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.net.Uri;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
@@ -385,7 +386,15 @@ class AsyncServiceHelper
             else
             {
                 // If the dependencies list is not defined or empty.
-                String AbsLibraryPath = Path + File.separator + "libopencv_java.so";
+                int sdk_version = Build.VERSION.SDK_INT;
+                Log.d("SDKINT",String.valueOf(sdk_version));
+                String AbsLibraryPath;
+                if (sdk_version < 23) {         //check for android version
+                    AbsLibraryPath = Path + File.separator + "libopencv_java.so";
+                } else {
+                    AbsLibraryPath = Path + File.separator + "libopencv_java3.so";  // Library heißt für Android 6 aufwärts anders
+                }
+
                 result &= loadLibrary(AbsLibraryPath);
             }
 
