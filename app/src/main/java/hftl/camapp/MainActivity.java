@@ -27,18 +27,26 @@ import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfFloat;
+import org.opencv.core.MatOfInt;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.lang.*;
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+//import.java.Math.toIntExact(long);
+
+import static org.opencv.imgproc.Imgproc.calcHist;
+import static org.opencv.imgproc.Imgproc.cvtColor;
 
 public class MainActivity extends AppCompatActivity {
     /* gloabal class variables  */
@@ -705,7 +713,7 @@ public class MainActivity extends AppCompatActivity {
     public void saveImage( Mat mat) {
         Mat mIntermediateMat = new Mat();
         //Strutz Imgproc.cvtColor( mat, mIntermediateMat, Imgproc.COLOR_RGBA2BGRA, 3);
-        Imgproc.cvtColor( mat, mIntermediateMat, Imgproc.COLOR_RGBA2BGR, 3);
+        cvtColor( mat, mIntermediateMat, Imgproc.COLOR_RGBA2BGR, 3);
         File path = new File( Environment.getExternalStorageDirectory() + SAVE_DIR);
         if (!path.exists()) path.mkdirs();
 
@@ -743,58 +751,30 @@ public class MainActivity extends AppCompatActivity {
         /**/
     }
 
-    public List entropylist (Mat inputFrame){
-        Map<String, Integer> entropylist = new HashMap<String, Integer>();
 
-        Long size = inputFrame.total() * inputFrame.channels();
-        int isize = size.intValue();
-        byte buff[] = new byte[isize];
-        int shift = quant_mode;
-        inputFrame.get(0, 0, buff);
+    private float entropy(Mat inputFrame) {
+        long total = inputFrame.total();
+        int index = (int) total; //casting damit der Kram weiter unten funktioniert
+        int cnt = 0;
+        float entr = 0F;
+        float total_size = inputFrame.rows() * inputFrame.cols(); //total size of all symbols in an image
+        byte buff[] = new byte[index * inputFrame.channels()];
 
-        int pos = 0;
-        for (byte b : buff) // four components
-
-        {
-            // das byte wird durch eine Bitverschiebung nach rechts und links um eine Bitanzahl gekürzt
-            // buff[pos] = (byte) ((b >> shift) << shift);
-            byte x = buff[pos];
-            String s = new String(buff);
-
-            entropylist.put (s);
-            pos++;
-            // ignore Alpha
-        }
+        for (int x = 0; x < inputFrame.cols(); x++) {
+            for (int y = 0; y < inputFrame.rows(); y++) {
 
 
-
-
-
-        return entropylist;
-    }
-    public static Double ShannonEntropierechnen(List<String> values) {
-        Map<String, Integer> map = new HashMap<String, Integer>();
-
-
-
-        // count the occurrences of each value
-        for (String sequence : values) {
-            if (!map.containsKey(sequence)) {
-                map.put(sequence, 0);
+                float sym_occur = inputFrame.get(x, y, buff); //Wie oft ein Symbol vorkommt
+                if (sym_occur > 0) //log von 0 geht gegen undendlich. -> damnit es sich nicht zu Tode rechnet.
+                {
+                    cnt++;
+                    entr += (sym_occur / total_size) * (Math.log(total_size / sym_occur)/Math.log(2));
+                }
             }
-            map.put(sequence, map.get(sequence) + 1);
         }
 
-        // calculate the entropy
-        Double result = 0.0;
-        for (String sequence : map.keySet()) {
-            Double frequency = (double) map.get(sequence) / values.size();
-            result -= frequency * (Math.log(frequency) / Math.log(2));
-        }
 
-        return result;
+        return entr;
     }
-
-
-
 }
+
