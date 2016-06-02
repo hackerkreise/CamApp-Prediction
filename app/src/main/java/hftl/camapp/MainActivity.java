@@ -27,12 +27,15 @@ import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfFloat;
 import org.opencv.core.MatOfInt;
+import org.opencv.core.Scalar;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
+//import org.opencv.core.Point;
 
 import java.io.File;
 import java.lang.*;
@@ -289,6 +292,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     save_flag = false;
                 }
+
 
                 switch (mode)
 
@@ -712,8 +716,14 @@ public class MainActivity extends AppCompatActivity {
      */
     public void saveImage( Mat mat) {
         Mat mIntermediateMat = new Mat();
+
+
+
+
+
         //Strutz Imgproc.cvtColor( mat, mIntermediateMat, Imgproc.COLOR_RGBA2BGRA, 3);
         cvtColor( mat, mIntermediateMat, Imgproc.COLOR_RGBA2BGR, 3);
+        float H = this.entropy(mIntermediateMat); //Entropymethode aufrufen
         File path = new File( Environment.getExternalStorageDirectory() + SAVE_DIR);
         if (!path.exists()) path.mkdirs();
 
@@ -740,6 +750,14 @@ public class MainActivity extends AppCompatActivity {
         /* does not always work as expected, Widows does not show these images  */
         MediaScannerConnection.scanFile(this, new String[]{file.toString()}, null, null);
 
+
+        //float H = this.entropy(mIntermediateMat); //Entropymethode aufrufen
+        String ENTROPY = Float.toString(H);        //Float zu String casten weil Core.putText nur String akkzeptiert
+
+        int n = 250;
+        int m = 250;
+        Core.putText(mIntermediateMat, ENTROPY, new org.opencv.core.Point(n,m), 3, 5, new Scalar(255, 0, 0, 255), 2);
+
         Boolean saved = Highgui.imwrite( file.toString(), mIntermediateMat); //maximum compression for PNG
         //MainActivity.progressbar.setVisibility( (View.GONE));
 /* some problems
@@ -752,7 +770,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private float entropy(Mat inputFrame) {
+    public float entropy(Mat inputFrame) {
         long total = inputFrame.total();
         int index = (int) total; //casting damit der Kram weiter unten funktioniert
         int cnt = 0;
@@ -760,7 +778,7 @@ public class MainActivity extends AppCompatActivity {
         float total_size = inputFrame.rows() * inputFrame.cols(); //total size of all symbols in an image
         byte buff[] = new byte[index * inputFrame.channels()];
 
-        for (int x = 0; x < inputFrame.cols(); x++) {
+        for (int x = 0; x < inputFrame.cols(); x++) { //Doppelschleife damit jeder Wert abgetastet wird
             for (int y = 0; y < inputFrame.rows(); y++) {
 
 

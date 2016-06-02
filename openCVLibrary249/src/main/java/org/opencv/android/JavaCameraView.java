@@ -170,6 +170,11 @@ public class JavaCameraView extends CameraBridgeViewBase implements PreviewCallb
                         mFpsMeter.setResolution(mFrameWidth, mFrameHeight);
                     }
 
+                  /*  if (mEntropyMeter != null) {
+                        mEntropyMeter.setResolution(mFrameWidth, mFrameHeight);
+                    }*/
+
+
                     int size = mFrameWidth * mFrameHeight;
                     size  = size * ImageFormat.getBitsPerPixel(params.getPreviewFormat()) / 8;
                     mBuffer = new byte[size];

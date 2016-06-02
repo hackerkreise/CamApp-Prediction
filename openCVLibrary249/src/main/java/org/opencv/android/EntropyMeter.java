@@ -10,17 +10,17 @@ import org.opencv.core.Core;
 import java.text.DecimalFormat;
 
 /**
- * Created by Adam on 01.06.2016.
+ * Created by Adam on 01.06.2016. Noch nicht fertig!!
  */
 public class EntropyMeter {
     private static final String TAG               = "EntropyMeter";
     private static final int    STEP              = 20;
-    private static final DecimalFormat FPS_FORMAT = new DecimalFormat("0.00");
+    private static final DecimalFormat ENTROPY_FORMAT = new DecimalFormat("0.00");
 
     private int                 mFramesCouner;
     private double              mFrequency;
     private long                mprevFrameTime;
-    private String              mStrfps;
+    private String              mStrEntropy;
     Paint mPaint;
     boolean                     mIsInitialized = false;
     int                         mWidth = 0;
@@ -30,15 +30,21 @@ public class EntropyMeter {
         mFramesCouner = 0;
         mFrequency = Core.getTickFrequency();
         mprevFrameTime = Core.getTickCount();
-        mStrfps = "";
+        mStrEntropy = "";
 
         mPaint = new Paint();
-        mPaint.setColor(Color.BLUE);
+        mPaint.setColor(Color.RED);
         mPaint.setTextSize(20);
     }
 
     public void measure() {
-        if (!mIsInitialized) {
+
+
+
+
+        //mStrEntropy = entropy;
+
+        /* if (!mIsInitialized) {
             init();
             mIsInitialized = true;
         } else {
@@ -48,12 +54,16 @@ public class EntropyMeter {
                 double fps = STEP * mFrequency / (time - mprevFrameTime);
                 mprevFrameTime = time;
                 if (mWidth != 0 && mHeight != 0)
-                    mStrfps = FPS_FORMAT.format(fps) + " FPS@" + Integer.valueOf(mWidth) + "x" + Integer.valueOf(mHeight);
+                    mStrEntropy = FPS_FORMAT.format(fps) + " Entropy@" + Integer.valueOf(mWidth) + "x" + Integer.valueOf(mHeight);
                 else
-                    mStrfps = FPS_FORMAT.format(fps) + " FPS";
-                Log.i(TAG, mStrfps);
+                    mStrEntropy = FPS_FORMAT.format(fps) + " Entropy";
+                Log.i(TAG, mStrEntropy);
             }
         }
+        */
+
+
+
     }
 
     public void setResolution(int width, int height) {
@@ -62,7 +72,7 @@ public class EntropyMeter {
     }
 
     public void draw(Canvas canvas, float offsetx, float offsety) {
-        Log.d(TAG, mStrfps);
-        canvas.drawText(mStrfps, offsetx, offsety, mPaint);
+        Log.d(TAG, mStrEntropy);
+        canvas.drawText(mStrEntropy, offsetx, offsety, mPaint);
     }
 }
