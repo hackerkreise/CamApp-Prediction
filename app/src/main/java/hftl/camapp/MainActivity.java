@@ -21,12 +21,19 @@ import android.view.SurfaceView;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ProgressBar;
+import android.graphics.Bitmap;
 import android.widget.Toast;
+
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.Multisets;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -41,15 +48,20 @@ import java.io.File;
 import java.lang.*;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
 //import.java.Math.toIntExact(long);
 
+import static com.google.common.math.DoubleMath.log2;
 import static org.opencv.imgproc.Imgproc.calcHist;
 import static org.opencv.imgproc.Imgproc.cvtColor;
+import static org.opencv.imgproc.Imgproc.integral;
 
 public class MainActivity extends AppCompatActivity {
     /* gloabal class variables  */
@@ -77,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
     int pixel_mode = 4;
     int voodoo_mode = OFFSET_A;
     int voodoo_y, voodoo_x, voodoo_diff, voodoo_diff_shift=2;
+
 
     //Initialisierung und Aktivierung des Frames zuständig. Den OpenCVManager einbinden.
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -706,6 +719,139 @@ public class MainActivity extends AppCompatActivity {
         return inputFrame;
     }
 
+    public double entropy(Mat matent) {
+        int size = (int) (matent.total() * matent.channels());
+        float entr = 0;
+        double[] temp = new double[size];
+        double[] sym = new double[matent.channels()];
+        List<String> HE = null;
+        int sym_occur = 0;
+        double u = 0;
+
+        //matent.convertTo(matent, CvType.CV_64FC3); //Byte zu Double konvertieren damit man damit rechnen kann
+        Multiset<Double> P = HashMultiset.create(); //Von Google Guava Library, nimmt alle Werte auf und zählt bei Duplikatwerten die Anzahl
+        //Multiset<double> PG = HashMultiset.create();
+        //Multiset<double> PB = HashMultiset.create();
+
+
+        for (int x = 0; x < size; x++) {
+            for (int y = 0; y < size; y++) {
+                if(matent.get(x, y) != null) {
+                    sym = (matent.get(x, y));
+                    for(int v= 0; v<1;v++) {
+                        P.add(sym[v],1);
+                    }
+
+                    /*PB.add(temp[1], 1);
+                    PG.add(temp[2], 1);*/
+                }
+            }
+        }
+
+        for(int c=0; c<size; c++){
+            sym_occur=(P.count(c)/size);
+            //entr += (sym_occur / size) * (Math.log(size / sym_occur)/Math.log(2));
+            entr -= sym_occur* (Math.log(sym_occur)/Math.log(2));
+        }
+
+        return entr ;
+    }
+
+    public double entropy2(Mat matent2){
+        double entropy = 0;
+        Mat img = matent2.clone();
+
+
+
+        Mat imgout;
+        imgout = new Mat();
+        //Imgproc.cvtColor(img, imgout, Imgproc.COLOR_RGBA2RGB);
+        Imgproc.cvtColor(img, imgout, Imgproc.COLOR_BGR2HSV);
+        int hbins = 30;
+        int sbins = 32;
+        MatOfInt histSize=new MatOfInt(hbins,sbins);
+        MatOfFloat mRanges = new MatOfFloat(0,179,0,255);
+        MatOfInt mChannels = new MatOfInt(0, 1);
+        Mat hist = new Mat();
+        //Mat histnorm = new Mat();
+
+        boolean accumulate = false;
+        Imgproc.calcHist(Arrays.asList(imgout), mChannels, new Mat(), hist, histSize, mRanges, accumulate);
+
+        Core.normalize(hist, hist, 0, 255, Core.NORM_MINMAX, -1, new Mat());
+
+
+
+        //Mat histNorm = hist / (matent2.height() * matent2.width());
+
+        for (int i=0; i<hist.height(); i++)
+        {
+            float val;
+            double[] vals = hist.get(i,0);
+            val = (float) vals[0];
+
+            float binEntry = val;
+            if (binEntry != 0.0)
+                entropy -= binEntry * (Math.log(binEntry)/Math.log(2));
+        }
+
+
+
+
+
+
+        return entropy;
+
+    }
+
+    public static double entropy3 (Mat img){
+        Bitmap bmp = null;
+        Mat tmp = new Mat (img.cols(), img.rows(), CvType.CV_8U, new Scalar(4));
+        img.copyTo(tmp);
+        //Imgproc.cvtColor(tmp, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
+        bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(tmp, bmp);
+
+
+
+
+
+        List<String> values= new ArrayList<String>();
+        int n = 0;
+        Map<Integer, Integer> occ = new HashMap<>();
+        for(int i=0;i<bmp.getHeight();i++){
+            for(int j=0;j<bmp.getWidth();j++){
+                int pixel = bmp.getPixel(j, i);
+                int alpha = (pixel >> 24) & 0xff;
+                int red = (pixel >> 16) & 0xff;
+                int green = (pixel >> 8) & 0xff;
+                int blue = (pixel) & 0xff;
+                //0.2989 * R + 0.5870 * G + 0.1140 * B greyscale conversion
+//System.out.println("i="+i+" j="+j+" argb: " + alpha + ", " + red + ", " + green + ", " + blue);
+                int d= (int)Math.round(0.2989 * red + 0.5870 * green + 0.1140 * blue);
+                if(!values.contains(String.valueOf(d)))
+                    values.add(String.valueOf(d));
+                if (occ.containsKey(d)) {
+                    occ.put(d, occ.get(d) + 1);
+                } else {
+                    occ.put(d, 1);
+                }
+                ++n;
+            }
+        }
+        double e = 0.0;
+        for (Map.Entry<Integer, Integer> entry : occ.entrySet()) {
+            int cx = entry.getKey();
+            double p = (double) entry.getValue() / n;
+            e += p * log2(p);
+        }
+        return -e;
+    }
+
+
+
+
+
 
 
     /* generate filename and save image */
@@ -715,15 +861,14 @@ public class MainActivity extends AppCompatActivity {
      * @param mat zu speicherndes Bild
      */
     public void saveImage( Mat mat) {
+
         Mat mIntermediateMat = new Mat();
 
-
-
-
+        Mat cloneFrame = mat.clone();
 
         //Strutz Imgproc.cvtColor( mat, mIntermediateMat, Imgproc.COLOR_RGBA2BGRA, 3);
         cvtColor( mat, mIntermediateMat, Imgproc.COLOR_RGBA2BGR, 3);
-        float H = this.entropy(mIntermediateMat); //Entropymethode aufrufen
+
         File path = new File( Environment.getExternalStorageDirectory() + SAVE_DIR);
         if (!path.exists()) path.mkdirs();
 
@@ -751,14 +896,14 @@ public class MainActivity extends AppCompatActivity {
         MediaScannerConnection.scanFile(this, new String[]{file.toString()}, null, null);
 
 
-        //float H = this.entropy(mIntermediateMat); //Entropymethode aufrufen
-        String ENTROPY = Float.toString(H);        //Float zu String casten weil Core.putText nur String akkzeptiert
+        double H = this.entropy3(cloneFrame); //Entropymethode aufrufen
+        String ENTROPY = String.valueOf(H);        //Double zu String casten weil Core.putText nur String akkzeptiert
 
         int n = 250;
         int m = 250;
         Core.putText(mIntermediateMat, ENTROPY, new org.opencv.core.Point(n,m), 3, 5, new Scalar(255, 0, 0, 255), 2);
 
-        Boolean saved = Highgui.imwrite( file.toString(), mIntermediateMat); //maximum compression for PNG
+        Boolean saved = Highgui.imwrite( file.toString(), mat); //maximum compression for PNG
         //MainActivity.progressbar.setVisibility( (View.GONE));
 /* some problems
         if (saved) {
@@ -767,32 +912,10 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText( getApplicationContext(), R.string.msg_save_error, Toast.LENGTH_SHORT).show();
         }
         /**/
+        ;
     }
 
 
-    public float entropy(Mat inputFrame) {
-        long total = inputFrame.total();
-        int index = (int) total; //casting damit der Kram weiter unten funktioniert
-        int cnt = 0;
-        float entr = 0F;
-        float total_size = inputFrame.rows() * inputFrame.cols(); //total size of all symbols in an image
-        byte buff[] = new byte[index * inputFrame.channels()];
 
-        for (int x = 0; x < inputFrame.cols(); x++) { //Doppelschleife damit jeder Wert abgetastet wird
-            for (int y = 0; y < inputFrame.rows(); y++) {
-
-
-                float sym_occur = inputFrame.get(x, y, buff); //Wie oft ein Symbol vorkommt
-                if (sym_occur > 0) //log von 0 geht gegen undendlich. -> damnit es sich nicht zu Tode rechnet.
-                {
-                    cnt++;
-                    entr += (sym_occur / total_size) * (Math.log(total_size / sym_occur)/Math.log(2));
-                }
-            }
-        }
-
-
-        return entr;
-    }
 }
 
