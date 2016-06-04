@@ -11,6 +11,7 @@ import android.media.MediaScannerConnection;  // Strutz
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Display;
 import android.view.View;
 import android.view.Menu;
@@ -27,6 +28,10 @@ import android.widget.Toast;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
+import com.google.common.escape.CharEscaper;
+import com.google.common.primitives.Bytes;
+import com.google.common.primitives.Chars;
+import com.google.common.primitives.Doubles;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -719,135 +724,54 @@ public class MainActivity extends AppCompatActivity {
         return inputFrame;
     }
 
-    public double entropy(Mat matent) {
-        int size = (int) (matent.total() * matent.channels());
-        float entr = 0;
-        double[] temp = new double[size];
-        double[] sym = new double[matent.channels()];
-        List<String> HE = null;
-        int sym_occur = 0;
-        double u = 0;
 
-        //matent.convertTo(matent, CvType.CV_64FC3); //Byte zu Double konvertieren damit man damit rechnen kann
-        Multiset<Double> P = HashMultiset.create(); //Von Google Guava Library, nimmt alle Werte auf und zählt bei Duplikatwerten die Anzahl
-        //Multiset<double> PG = HashMultiset.create();
-        //Multiset<double> PB = HashMultiset.create();
-
-
-        for (int x = 0; x < size; x++) {
-            for (int y = 0; y < size; y++) {
-                if(matent.get(x, y) != null) {
-                    sym = (matent.get(x, y));
-                    for(int v= 0; v<1;v++) {
-                        P.add(sym[v],1);
+    public String entropy4( Mat inputFrame) {
+        // inputFrame is a Mat structure in RGBA format
+        int x, y, m, n;
+        int px, py, pm, pos;
+        int channels = inputFrame.channels();
+        int width = inputFrame.width();
+        int height = inputFrame.height();
+        int isize = height * width * channels; /* compute total size of required array  */
+        byte buff[] = new byte[isize];      /* allocate memory for image data   */
+        int step = pixel_mode; /* (0, 1, 2, 3) ==> (2, 4, 6, 8)   */
+        final int stride = width * channels;
+        final int stride_step = width * channels * step;
+        final int stride_chanstep = step * channels;
+        Multiset<Byte> P = HashMultiset.create();
+        Double entr =0.0;
+        inputFrame.get(0, 0, buff);
+        /* for all blocks in vertical direction */
+        for ( y = 0, py=0; y < height; y+= step, py+=stride_step)
+        {   /* for all blocks in horizontal direction */
+            for ( x = 0, px = py; x < width; x+=step, px += stride_chanstep)
+            {   /* for all pixels in the blocks in vertical direction
+                 * remember that blocks must be cropped at bottom image border */
+                for ( m=0, pm = px; (m < step) && (y+m < height); m++, pm += stride)
+                {   /* for all pixels in the blocks in horizontal direction
+                     * remember that blocks must be cropped at right image border */
+                    for ( n=0, pos = pm; (n < step) && (x+n < width); n++, pos+=channels)
+                    {
+                        buff[pos]= buff[px];
+                        P.add(buff[pos]);
                     }
-
-                    /*PB.add(temp[1], 1);
-                    PG.add(temp[2], 1);*/
                 }
             }
         }
 
-        for(int c=0; c<size; c++){
-            sym_occur=(P.count(c)/size);
+        for(int c=0; c<=P.size(); c++){
+            double sym_occur;
+            Log.d("penis"+c,String.valueOf(P.count(c)));
+            sym_occur=(P.count(c)/P.size());
             //entr += (sym_occur / size) * (Math.log(size / sym_occur)/Math.log(2));
-            entr -= sym_occur* (Math.log(sym_occur)/Math.log(2));
-        }
+           if(sym_occur !=0){ entr += (sym_occur * log2(sym_occur))*-1;}
 
-        return entr ;
+        }
+        //Log.d("penis",String.valueOf(entr));
+        String H = String.valueOf(entr);
+
+        return H;
     }
-
-    public double entropy2(Mat matent2){
-        double entropy = 0;
-        Mat img = matent2.clone();
-
-
-
-        Mat imgout;
-        imgout = new Mat();
-        //Imgproc.cvtColor(img, imgout, Imgproc.COLOR_RGBA2RGB);
-        Imgproc.cvtColor(img, imgout, Imgproc.COLOR_BGR2HSV);
-        int hbins = 30;
-        int sbins = 32;
-        MatOfInt histSize=new MatOfInt(hbins,sbins);
-        MatOfFloat mRanges = new MatOfFloat(0,179,0,255);
-        MatOfInt mChannels = new MatOfInt(0, 1);
-        Mat hist = new Mat();
-        //Mat histnorm = new Mat();
-
-        boolean accumulate = false;
-        Imgproc.calcHist(Arrays.asList(imgout), mChannels, new Mat(), hist, histSize, mRanges, accumulate);
-
-        Core.normalize(hist, hist, 0, 255, Core.NORM_MINMAX, -1, new Mat());
-
-
-
-        //Mat histNorm = hist / (matent2.height() * matent2.width());
-
-        for (int i=0; i<hist.height(); i++)
-        {
-            float val;
-            double[] vals = hist.get(i,0);
-            val = (float) vals[0];
-
-            float binEntry = val;
-            if (binEntry != 0.0)
-                entropy -= binEntry * (Math.log(binEntry)/Math.log(2));
-        }
-
-
-
-
-
-
-        return entropy;
-
-    }
-
-    public static double entropy3 (Mat img){
-        Bitmap bmp = null;
-        Mat tmp = new Mat (img.cols(), img.rows(), CvType.CV_8U, new Scalar(4));
-        img.copyTo(tmp);
-        //Imgproc.cvtColor(tmp, tmp, Imgproc.COLOR_GRAY2RGBA, 4);
-        bmp = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(tmp, bmp);
-
-
-
-
-
-        List<String> values= new ArrayList<String>();
-        int n = 0;
-        Map<Integer, Integer> occ = new HashMap<>();
-        for(int i=0;i<bmp.getHeight();i++){
-            for(int j=0;j<bmp.getWidth();j++){
-                int pixel = bmp.getPixel(j, i);
-                int alpha = (pixel >> 24) & 0xff;
-                int red = (pixel >> 16) & 0xff;
-                int green = (pixel >> 8) & 0xff;
-                int blue = (pixel) & 0xff;
-                //0.2989 * R + 0.5870 * G + 0.1140 * B greyscale conversion
-//System.out.println("i="+i+" j="+j+" argb: " + alpha + ", " + red + ", " + green + ", " + blue);
-                int d= (int)Math.round(0.2989 * red + 0.5870 * green + 0.1140 * blue);
-                if(!values.contains(String.valueOf(d)))
-                    values.add(String.valueOf(d));
-                if (occ.containsKey(d)) {
-                    occ.put(d, occ.get(d) + 1);
-                } else {
-                    occ.put(d, 1);
-                }
-                ++n;
-            }
-        }
-        double e = 0.0;
-        for (Map.Entry<Integer, Integer> entry : occ.entrySet()) {
-            int cx = entry.getKey();
-            double p = (double) entry.getValue() / n;
-            e += p * log2(p);
-        }
-        return -e;
-    }
-
 
 
 
@@ -896,14 +820,14 @@ public class MainActivity extends AppCompatActivity {
         MediaScannerConnection.scanFile(this, new String[]{file.toString()}, null, null);
 
 
-        double H = this.entropy3(cloneFrame); //Entropymethode aufrufen
-        String ENTROPY = String.valueOf(H);        //Double zu String casten weil Core.putText nur String akkzeptiert
+        String ENTROPY = this.entropy4(mIntermediateMat); //Entropymethode aufrufen
+        //Double zu String casten weil Core.putText nur String akkzeptiert
 
         int n = 250;
         int m = 250;
-        Core.putText(mIntermediateMat, ENTROPY, new org.opencv.core.Point(n,m), 3, 5, new Scalar(255, 0, 0, 255), 2);
+        Core.putText(mIntermediateMat, ENTROPY, new org.opencv.core.Point(n,m), 3, 2, new Scalar(255, 0, 0, 255), 2);
 
-        Boolean saved = Highgui.imwrite( file.toString(), mat); //maximum compression for PNG
+        Boolean saved = Highgui.imwrite( file.toString(), mIntermediateMat); //maximum compression for PNG
         //MainActivity.progressbar.setVisibility( (View.GONE));
 /* some problems
         if (saved) {
