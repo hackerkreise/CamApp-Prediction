@@ -90,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
     int pixel_mode = 4;
     int voodoo_mode = OFFSET_A;
     int voodoo_y, voodoo_x, voodoo_diff, voodoo_diff_shift=2;
+    int pred_linear = 1; // wenn 1 dann linear, ansonsten nicht linear
 
 
     //Initialisierung und Aktivierung des Frames zuständig. Den OpenCVManager einbinden.
@@ -418,7 +419,7 @@ public class MainActivity extends AppCompatActivity {
         final String[] pixelOptions = { "2 x 2 pix", "4 x 4 pix", "6 x 6 pix", "8 x 8 pix",
                  "10 x 10 pix", "12 x 12 pix", "14 x 14 pix", "16 x 16 pix"};
         final String[] voodooOptions = { "Offset A", "Offset B"};
-        final String[] BONNKMI14Options = { "Nase", "Mensch"}; //Optionen des Modus als String bereitstellen
+        final String[] BONNKMI14Options = { "Linear", "Nichtlinear"}; //Optionen des Modus als String bereitstellen
         if (mode == QUANTIZE) {
             clusterBuilder.setTitle( "Choose number of bit shifts:");
             /* quant_mode defines the number of bit shifts, this must be mapped to the
@@ -466,11 +467,11 @@ public class MainActivity extends AppCompatActivity {
         else if (mode == BONNKMI14){
             clusterBuilder.setTitle("Nasenlänge auswählen "); //options Menü für neuen Modus
                 /*                  */
-            clusterBuilder.setSingleChoiceItems( BONNKMI14Options, voodoo_mode,
+            clusterBuilder.setSingleChoiceItems( BONNKMI14Options, pred_linear,
                     new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick( DialogInterface dialog, int item) {
-                            voodoo_mode = item;
+                            pred_linear = item;
                             dialog.dismiss();
                         }
                     });
@@ -660,64 +661,53 @@ public class MainActivity extends AppCompatActivity {
     /* BONNKMI14Image vorerst mit VODOO Funktion kopiert als Gerüst  */
     private Mat getBONNKMI14Image( Mat inputFrame) {
         // inputFrame is a Mat structure in RGBA format
-        Boolean focus_flag;
-        int x, y, x2, y2, diff_x, diff_y, yy, xx;
-        int py, pos, pos2;
-        int radius2;
-        double off;
-        double xd, yd, wx, wy;
+        // wenn eine Quantisierung gewählt wurde, dann wird der aktuelle Inputframe quantisiert
+        //cvtColor( inputFrame, cloneFrame, Imgproc.COLOR_RGBA2BGR, 3);
+        Long size = inputFrame.total() * inputFrame.channels();
+        int isize = size.intValue();
+        byte buff[] = new byte[isize];
+        int mask = (0xFF);
+        byte comp[] = new byte[isize];
+        byte temp[] = new byte[isize];
         int channels = inputFrame.channels();
-        int width = inputFrame.width();
-        int height = inputFrame.height();
-        int isize = height * width * channels; /* compute total size of required attay  */
-        byte buff1[] = new byte[isize];      /* allocate memory for image data   */
-        byte buff2[] = new byte[isize];      /* allocate memory for image data   */
-        final int stride = width * channels;
+        int shift = 8*inputFrame.channels();
+        final int stride = inputFrame.width() * inputFrame.channels();
+        inputFrame.get(0, 0, buff); //Bildmatrix wird in ein eindimensionales ByteArray gelegt im Format RGBA,RGBA,RGBA usw..
 
-        /* make a copy when in-place operation is not possible */
-        Mat cloneFrame = inputFrame.clone();
 
-         /* make voodoo parameter dependent on displayed size  */
-        if (maxFrameWidth < maxFrameHeight) voodoo_diff = maxFrameWidth >> voodoo_diff_shift;
-        else  voodoo_diff = maxFrameHeight >> voodoo_diff_shift;
-        radius2 = voodoo_diff * voodoo_diff;
 
-        if (voodoo_mode == OFFSET_A) off = voodoo_diff;
-        else if (voodoo_mode == OFFSET_B) off = (3 * voodoo_diff) / 2;
-        else off = voodoo_diff/2;
+           int pos = 0;
 
-        inputFrame.get( 0, 0, buff1); /* get address of original data array  */
-        cloneFrame.get( 0, 0, buff2); /* get address of copied data array  */
-        /* for all blocks in vertical direction */
-        for (y = 0, py = 0; y < height; y++, py += stride) {
-            diff_y = y - voodoo_y; /* get vertical focus of effect   */
-            yy = diff_y * diff_y;
-            /* for all blocks in horizontal direction */
-            for (x = 0, pos = py; x < width; x++, pos += channels) {
-                diff_x = x - voodoo_x; /* get horizontal focus of effect   */
-                xx = diff_x * diff_x;
-                if (xx + yy < radius2) {
-                    /* get new x position   */
-                    xd = (x + off);
-                    x2 = (int) Math.floor(xd);
-                    x2 = Math.max(0, Math.min(x2, width - 2)); /*  ckeck border  */
-                    /* get new y position   */
-                    yd = (y );
-                    y2 = (int) Math.floor(yd);
-                    y2 = Math.max(0, Math.min(y2, height - 2)); /* ckeck border  */
-                    pos2 = x2 * channels + y2 * stride;
+            for (byte b : buff) {
+                if ((pos > channels)) /*&& (byte) (b - temp[pos - channels] + 128)>=0 && (byte) (b - temp[pos - channels] + 128)<256)*/ {
+                    //Abfangen ungültiger Werte führt zu komischen Ergebnis
+                    temp[pos] = b;
+                    comp[pos] = (byte) (((b - temp[pos - channels] + 0x80))); //Aktuelles Byte B minus byte das davor steht + 128 aufaddieren
 
-                    buff1[pos] = buff2[pos2];
-                    buff1[pos + 1] = buff2[pos2 + 1];
-                    buff1[pos + 2] = buff2[pos2 + 2];
+                    pos++;
+                } else {
+                    temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
+                    pos++;
                 }
             }
+
+
+            inputFrame.put(0, 0, comp);
+
+            return inputFrame;
         }
+        else{
 
         inputFrame.put( 0, 0, buff1); /* put modified data array back to inputFrame */
         cloneFrame.release();  /* release copied data   */
 
-        return inputFrame;
+            inputFrame.put(0, 0, comp);
+
+            return inputFrame;
+
+
+        }
+
     }
 
 
@@ -730,7 +720,7 @@ public class MainActivity extends AppCompatActivity {
         int[] counts = new int[isize]; //Zum Zählen wie oft ein eindeutiges Byte vorkommt
         double entr = 0; //Wert für Entropie initialisieren
 
-        entropyFrame.get(0, 0, buff); //Gesamte RGBA Bildmatrix wird in ein byte Array buff überführt, bytes sind dann RGBARGBARGBARGBA.... angeordnet.
+        entropyFrame.get(0, 0, buff); //Gesamte RGBA Bildmatrix wird in ein byte Array buff überführt, bytes sind dann RRRR....GGGG....BBBB...AAAA.... angeordnet.
 
         for (byte b : buff) // Für jedes Byte im Array Buff wird folgendes gemacht:
         {
@@ -800,8 +790,8 @@ public class MainActivity extends AppCompatActivity {
 
         String ENTROPY = this.entropy4(mIntermediateMat); //Entropymethode aufrufen
         int n = 0;
-        int m = 650;
-        Core.putText(mIntermediateMat, ENTROPY, new org.opencv.core.Point(n,m), 1, 2, new Scalar(116, 0, 226, 255), 2); //Entropywert auf das Bild schreiben
+        int m = 20;
+        Core.putText(mIntermediateMat, ENTROPY, new org.opencv.core.Point(n,m), 1, 1, new Scalar(116, 0, 226, 255), 2); //Entropywert auf das Bild schreiben
 
         Boolean saved = Highgui.imwrite( file.toString(), mIntermediateMat); //maximum compression for PNG
         //MainActivity.progressbar.setVisibility( (View.GONE));
