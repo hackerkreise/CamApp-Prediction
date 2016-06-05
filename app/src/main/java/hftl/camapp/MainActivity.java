@@ -25,13 +25,7 @@ import android.widget.ProgressBar;
 import android.graphics.Bitmap;
 import android.widget.Toast;
 
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
-import com.google.common.collect.Multisets;
-import com.google.common.escape.CharEscaper;
-import com.google.common.primitives.Bytes;
-import com.google.common.primitives.Chars;
-import com.google.common.primitives.Doubles;
+
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -47,14 +41,16 @@ import org.opencv.core.MatOfInt;
 import org.opencv.core.Scalar;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
-//import org.opencv.core.Point;
+
 
 import java.io.File;
 import java.lang.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -63,7 +59,7 @@ import java.util.Map;
 
 //import.java.Math.toIntExact(long);
 
-import static com.google.common.math.DoubleMath.log2;
+import static com.google.common.math.DoubleMath.log2; // Schneller als java.math.log
 import static org.opencv.imgproc.Imgproc.calcHist;
 import static org.opencv.imgproc.Imgproc.cvtColor;
 import static org.opencv.imgproc.Imgproc.integral;
@@ -727,48 +723,30 @@ public class MainActivity extends AppCompatActivity {
 
     public String entropy4( Mat inputFrame) {
         // inputFrame is a Mat structure in RGBA format
-        int x, y, m, n;
-        int px, py, pm, pos;
-        int channels = inputFrame.channels();
-        int width = inputFrame.width();
-        int height = inputFrame.height();
-        int isize = height * width * channels; /* compute total size of required array  */
-        byte buff[] = new byte[isize];      /* allocate memory for image data   */
-        int step = pixel_mode; /* (0, 1, 2, 3) ==> (2, 4, 6, 8)   */
-        final int stride = width * channels;
-        final int stride_step = width * channels * step;
-        final int stride_chanstep = step * channels;
-        Multiset<Byte> P = HashMultiset.create();
-        Double entr =0.0;
-        inputFrame.get(0, 0, buff);
-        /* for all blocks in vertical direction */
-        for ( y = 0, py=0; y < height; y+= step, py+=stride_step)
-        {   /* for all blocks in horizontal direction */
-            for ( x = 0, px = py; x < width; x+=step, px += stride_chanstep)
-            {   /* for all pixels in the blocks in vertical direction
-                 * remember that blocks must be cropped at bottom image border */
-                for ( m=0, pm = px; (m < step) && (y+m < height); m++, pm += stride)
-                {   /* for all pixels in the blocks in horizontal direction
-                     * remember that blocks must be cropped at right image border */
-                    for ( n=0, pos = pm; (n < step) && (x+n < width); n++, pos+=channels)
-                    {
-                        buff[pos]= buff[px];
-                        P.add(buff[pos]);
-                    }
-                }
-            }
+        Mat entropyFrame = inputFrame.clone(); //Frame wird geklont weil eine Echtzeitberechnung zu Rechenintensiv im Viewfinder ist.
+        Long size = entropyFrame.total() * entropyFrame.channels(); //Anzahl aller Bytes im Bild
+        int isize = size.intValue(); //nach int casten weil Mat.total und Mat.channels ein Long ausgibt.
+        byte buff[] = new byte[isize]; //Eindimensionales Array in dem Jeder Byte Wert jedes Pixels gespeichert wird
+        int[] counts = new int[isize]; //Zum Zählen wie oft ein eindeutiges Byte vorkommt
+        double entr = 0; //Wert für Entropie initialisieren
+
+        entropyFrame.get(0, 0, buff); //Gesamte RGBA Bildmatrix wird in ein byte Array buff überführt, bytes sind dann RGBARGBARGBARGBA.... angeordnet.
+
+        for (byte b : buff) // Für jedes Byte im Array Buff wird folgendes gemacht:
+        {
+            counts[b & 0xFF]++; // Array counts benutzt das byte B als Index. Und für jedes mal das in der Schleife das byte b gleich ist landet es wieder im selben Index und wird mit ++ um 1 inkrementiert. Somit ist die Häufigkeit der Symbole gezählt.
+            //Maske 0xFF muss AND verknüpft werden weil bytes in Java signed sind, damit der index quasi nicht von [-128, 127] sondern [0, 255] geht.
         }
 
-        for(int c=0; c<=P.size(); c++){
-            double sym_occur;
-            Log.d("penis"+c,String.valueOf(P.count(c)));
-            sym_occur=(P.count(c)/P.size());
-            //entr += (sym_occur / size) * (Math.log(size / sym_occur)/Math.log(2));
-           if(sym_occur !=0){ entr += (sym_occur * log2(sym_occur))*-1;}
-
+        for (byte b : buff){  //Für jedes Byte im Array Buff wird folgendes gemacht:
+            double P; //Wahrscheinlichkeitswert P für jedes Byte im Array Buff (Quasi Wahrscheinlichkeit P für jedes Byte im Bild bzw. in der Bildmatrix
+            P=(counts[b&0xFF]/ (double) (counts.length)); //counts.lenght muss zu double gecastet werden sonst kommt für sym_occur immer nur 0.0 raus
+            entr -= (P * log2(P)); //log2 ist von Googles Guava Library, deutlich perfomanter als Javas Math Log methode, weil man da keine Basis 2 hat und theoretisch gleich 2mal log aufrufen müsste.
         }
-        //Log.d("penis",String.valueOf(entr));
-        String H = String.valueOf(entr);
+
+        entr = Math.round(entr*100.0)/100.0; //Auf 2 Dezimalstellen runden sonst ist das halbe Bild voll mit dem Text der Entropie
+
+        String H = String.valueOf(entr); // String wird übergeben da die Methode Core.PutText nur Strings akkzeptiert.
 
         return H;
     }
@@ -821,11 +799,9 @@ public class MainActivity extends AppCompatActivity {
 
 
         String ENTROPY = this.entropy4(mIntermediateMat); //Entropymethode aufrufen
-        //Double zu String casten weil Core.putText nur String akkzeptiert
-
-        int n = 250;
-        int m = 250;
-        Core.putText(mIntermediateMat, ENTROPY, new org.opencv.core.Point(n,m), 3, 2, new Scalar(255, 0, 0, 255), 2);
+        int n = 0;
+        int m = 650;
+        Core.putText(mIntermediateMat, ENTROPY, new org.opencv.core.Point(n,m), 1, 2, new Scalar(116, 0, 226, 255), 2); //Entropywert auf das Bild schreiben
 
         Boolean saved = Highgui.imwrite( file.toString(), mIntermediateMat); //maximum compression for PNG
         //MainActivity.progressbar.setVisibility( (View.GONE));
