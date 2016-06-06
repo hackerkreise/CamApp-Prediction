@@ -650,6 +650,7 @@ public class MainActivity extends AppCompatActivity {
         //cvtColor( inputFrame, cloneFrame, Imgproc.COLOR_RGBA2BGR, 3);
         Long size = inputFrame.total() * inputFrame.channels();
         int isize = size.intValue();
+        int iwidth = inputFrame.height();
         byte buff[] = new byte[isize];
         int mask = (0xFF);
         byte comp[] = new byte[isize];
@@ -659,11 +660,12 @@ public class MainActivity extends AppCompatActivity {
         final int stride = inputFrame.width() * inputFrame.channels();
         inputFrame.get(0, 0, buff); //Bildmatrix wird in ein eindimensionales ByteArray gelegt im Format RGBA,RGBA,RGBA usw..
 
+      //  Log.d("TAG","Size: " + String.valueOf(isize) + " Width: " + String.valueOf(iwidth) + " Total: " + String.valueOf(isize/channels));
 
 
         if (pred_linear==0) {
            int pos = 0;
-
+            //
             for (byte b : buff) {
                 if ((pos > channels)) /*&& (byte) (b - temp[pos - channels] + 128)>=0 && (byte) (b - temp[pos - channels] + 128)<256)*/ {
                     //Abfangen ungültiger Werte führt zu komischen Ergebnis
@@ -689,16 +691,22 @@ public class MainActivity extends AppCompatActivity {
             int pos = 0;
 
             for (byte b : buff) {
-                if ((pos > channels)) /*&& (byte) (b - temp[pos - channels] + 128)>=0 && (byte) (b - temp[pos - channels] + 128)<256)*/ {
+                //in work
+                if ((pos > iwidth)) /*&& (byte) (b - temp[pos - channels] + 128)>=0 && (byte) (b - temp[pos - channels] + 128)<256)*/ {
                     //Abfangen ungültiger Werte führt zu komischen Ergebnis
-                    temp[pos] = b;
-                    comp[pos] = (byte) (((b - temp[pos - channels] + 0x80))); //Aktuelles Byte B minus byte das davor steht + 128 aufaddieren
 
+                    if( pos % iwidth  != 1 | pos % iwidth  != 2 | pos % iwidth  != 3 | pos % iwidth  != 4) { //erstes Byte pro Reihe auslassen (?)
+                        temp[pos] = b;
+                        comp[pos] = (byte) (((b - temp[pos - iwidth] - /*temp[pos-iwidth-channels]*/ - temp[pos-channels] + 0x80 + 0x80 + 0x80)));
+                        //Aktuelles Byte B minus byte das darüber/links oben/links daneben steht + 3 * 128 aufaddieren
+                    }
                     pos++;
                 } else {
+
                     temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
                     comp[pos] = b;
                     pos++;
+
                 }
             }
 
@@ -721,6 +729,7 @@ public class MainActivity extends AppCompatActivity {
         byte buff[] = new byte[isize]; //Eindimensionales Array in dem Jeder Byte Wert jedes Pixels gespeichert wird
         int[] counts = new int[isize]; //Zum Zählen wie oft ein eindeutiges Byte vorkommt
         double entr = 0; //Wert für Entropie initialisieren
+
 
         entropyFrame.get(0, 0, buff); //Gesamte RGBA Bildmatrix wird in ein byte Array buff überführt, bytes sind dann RRRR....GGGG....BBBB...AAAA.... angeordnet.
 
