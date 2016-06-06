@@ -6,65 +6,47 @@ import android.content.pm.ActivityInfo;
 import android.graphics.Point;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.MediaScannerConnection;  // Strutz
-
+import android.media.MediaScannerConnection;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Display;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceView;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ProgressBar;
-import android.graphics.Bitmap;
-import android.widget.Toast;
-
-
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
-import org.opencv.android.Utils;
 import org.opencv.core.Core;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfFloat;
-import org.opencv.core.MatOfInt;
 import org.opencv.core.Scalar;
 import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
 
-
 import java.io.File;
-import java.lang.*;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+
+import static com.google.common.math.DoubleMath.log2;
+import static org.opencv.imgproc.Imgproc.cvtColor;
 
 //import.java.Math.toIntExact(long);
 
-import static com.google.common.math.DoubleMath.log2; // Schneller als java.math.log
-import static org.opencv.imgproc.Imgproc.calcHist;
-import static org.opencv.imgproc.Imgproc.cvtColor;
-import static org.opencv.imgproc.Imgproc.integral;
-
 public class MainActivity extends AppCompatActivity {
+
+
+
+
+
     /* gloabal class variables  */
     public
     static ProgressBar progressbar;
@@ -73,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
     CameraBridgeViewBase cameraView; /* variable for camera */
     Button capture_button, mode_button, option_button, action_settings;
     Display display;
-    /* defines of different modes   */
+   /* defines of different modes   */
     static final int NONE = 0; /* direct display of camera image    */
     static final int QUANTIZE = 1;  /* do quantisation before displaying the image   */
     static final int SAMPLENHOLD = 2;  /*  make image blocky    */
@@ -94,7 +76,9 @@ public class MainActivity extends AppCompatActivity {
 
 
     //Initialisierung und Aktivierung des Frames zuständig. Den OpenCVManager einbinden.
+
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+
         @Override
         public void onManagerConnected(int status) {
             switch (status) {
@@ -109,9 +93,10 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
-
     @Override
     protected void onCreate( Bundle savedInstanceState) {
+
+
         super.onCreate(savedInstanceState);
         super.setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
@@ -676,6 +661,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+        if (pred_linear==0) {
            int pos = 0;
 
             for (byte b : buff) {
@@ -687,6 +673,7 @@ public class MainActivity extends AppCompatActivity {
                     pos++;
                 } else {
                     temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
+                    comp[pos] = b;
                     pos++;
                 }
             }
@@ -698,8 +685,23 @@ public class MainActivity extends AppCompatActivity {
         }
         else{
 
-        inputFrame.put( 0, 0, buff1); /* put modified data array back to inputFrame */
-        cloneFrame.release();  /* release copied data   */
+            //hier muss nichtlineare Prädiktion rein!
+            int pos = 0;
+
+            for (byte b : buff) {
+                if ((pos > channels)) /*&& (byte) (b - temp[pos - channels] + 128)>=0 && (byte) (b - temp[pos - channels] + 128)<256)*/ {
+                    //Abfangen ungültiger Werte führt zu komischen Ergebnis
+                    temp[pos] = b;
+                    comp[pos] = (byte) (((b - temp[pos - channels] + 0x80))); //Aktuelles Byte B minus byte das davor steht + 128 aufaddieren
+
+                    pos++;
+                } else {
+                    temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
+                    comp[pos] = b;
+                    pos++;
+                }
+            }
+
 
             inputFrame.put(0, 0, comp);
 
@@ -752,7 +754,9 @@ public class MainActivity extends AppCompatActivity {
      *
      * @param mat zu speicherndes Bild
      */
-    public void saveImage( Mat mat) {
+       public void saveImage( Mat mat) {
+        ;
+
 
         Mat mIntermediateMat = new Mat();
 
