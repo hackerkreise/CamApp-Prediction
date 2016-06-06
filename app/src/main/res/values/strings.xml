@@ -3,7 +3,7 @@
     <string name="action_settings">Settings</string>
     <string name="voodoo_settings">Voodoo Settings</string>
     <string name="msg_saved">Bild wurde gespeichert.</string>
-    <string name="msg_save_error">Error! Can not save Image!</string>
+    <string name="msg_save_error">Error! Can't save Image</string>
     <string name="welcome_title">Info</string>
     <string name="welcome_msg">developed at BONNKMI14.</string>
 </resources>
