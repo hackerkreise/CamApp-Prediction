@@ -654,8 +654,11 @@ public class MainActivity extends AppCompatActivity {
         int iwidth = inputFrame.height();  //height ist width, da landscape mode aktiv
         byte buff[] = new byte[isize];
         int mask = (0xFF);
-        byte comp[] = new byte[isize];
-        byte temp[] = new byte[isize];
+        byte comp_l[] = new byte[isize];
+        byte temp_l[] = new byte[isize];
+        byte comp_nl[] = new byte[isize];
+        byte temp_nl[] = new byte[isize];
+
         int channels = inputFrame.channels();
         int shift = 8*inputFrame.channels();
         final int stride = inputFrame.width() * inputFrame.channels();
@@ -670,66 +673,81 @@ public class MainActivity extends AppCompatActivity {
             for (byte b : buff) {
                 if ((pos > channels)) /*&& (byte) (b - temp[pos - channels] + 128)>=0 && (byte) (b - temp[pos - channels] + 128)<256)*/ {
                     //Abfangen ungültiger Werte führt zu komischen Ergebnis
-                    temp[pos] = b;
-                    comp[pos] = (byte) (((b - temp[pos - channels] + 0x80))); //Aktuelles Byte B minus byte das davor steht + 128 aufaddieren
+                    temp_l[pos] = b;
+                    comp_l[pos] = (byte) (((b - temp_l[pos - channels] + 0x80))); //Aktuelles Byte B minus byte das davor steht + 128 aufaddieren
 
                     pos++;
                 } else {
-                    temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
-                    comp[pos] = b;
+                    temp_l[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
+                    comp_l[pos] = b;
                     pos++;
                 }
             }
 
 
-            inputFrame.put(0, 0, comp);
+            inputFrame.put(0, 0, comp_l);
 
             return inputFrame;
         }
         else{
 
-            Log.d("TAG", "size: " + isize + " width: " + iwidth + " height: " + inputFrame.width()+ " cols: " + inputFrame.cols());
+           // Log.d("TAG", "size: " + isize + " width: " + iwidth + " height: " + inputFrame.width()+ " cols: " + inputFrame.cols());
             //hier muss nichtlineare Prädiktion rein!
             int pos = 0;
-            int itotalwidth = iwidth*channels;
+            int iTotalHeight = iwidth*channels;
             int iwidth_counter = 0;
 
             for (byte b : buff) {
                 //in work
 
-                for (int i =0; i<= inputFrame.cols(); i++)
-                    for(int j=0; i<= inputFrame.rows()*channels; j++) {
-                        if (pos != itotalwidth * i) {
-                            //testing
-                        }
-                    }
+                try{
+                    temp_nl[pos] = b;
+                //    comp[pos] = (byte) (((b - temp[pos - channels]) + (b-temp[pos-inputFrame.height()-channels]) + (b-temp[pos-inputFrame.height()]))/3 +0x80 );
+               //     comp_nl[pos] = (byte) ((b - (temp_nl[pos - iTotalHeight] + temp_nl[pos-channels] + temp_nl[pos-(iTotalHeight+channels)]) +0x80 ));
+                    comp_nl[pos] = (byte) ((b - temp_nl[pos-channels]) + (b-temp_nl[pos-iTotalHeight]) + (b - temp_nl[pos-iTotalHeight-channels]));
+                    comp_nl[pos] = (byte) (comp_nl[pos]/3+0x80);
+                    pos++;
+                } catch (ArrayIndexOutOfBoundsException e) { //für alle Werte, die außerhalb des arrays liegen, wird der Puffer nur gefüllt
+                    temp_l[pos] = b;
+                    comp_nl[pos] = b;
+                    pos++;
+                }
 
-           /*     if ((pos > itotalwidth))  {
+                /*if ((pos > iTotalHeight))  {
                     //Abfangen ungültiger Werte führt zu komischen Ergebnis
 
-                    if( pos % itotalwidth  != 1 && pos % itotalwidth  != 2 && pos % itotalwidth  != 3 && pos % itotalwidth  != 4) { //erstes Byte pro Reihe auslassen (?)
+
+
+                    if( pos % iTotalHeight  != 0 && pos % iTotalHeight  != 1 && pos % iTotalHeight  != 2 && pos % iTotalHeight  != 3) { //erstes Byte pro Reihe auslassen (?)
                     //    Log.d("TAGGG", "Pos: " + pos +" itotalwidth: " + String.valueOf(itotalwidth) + "    mod: " + String.valueOf(pos%itotalwidth));
                         temp[pos] = b;
-                        comp[pos] = (byte) (((b - temp[pos - itotalwidth] - temp[pos-itotalwidth-channels] - temp[pos-channels] + 0x80 )));
+                      //  comp[pos] = (byte) (((b - temp[pos - iTotalHeight-channels] - temp[pos-iTotalHeight] - temp[pos-channels] +0x80 )));
+                      //  comp[pos] = (byte) (((b - temp[pos - iTotalHeight-channels]) + (b - temp[pos-iTotalHeight]) +(b - temp[pos-channels])/3 +0x80 ));
+                        comp[pos] = (byte) ((b - temp[pos - iTotalHeight]));
+                        comp[pos] = (byte) ((b - temp[pos - iTotalHeight-channels]));
+                        comp[pos] = (byte) ((b - temp[pos-channels]));
+                        comp[pos] = (byte) ((comp[pos]/3)+0x80);
                         //Aktuelles Byte B minus byte das darüber/links oben/links daneben steht + 3 * 128 aufaddieren
+
+                    } else {
+                        temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
+                        comp[pos] = b;
                     }
 
-
-
-
                     pos++;
+
                 } else {
 
                     temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
                     comp[pos] = b;
                     pos++;
 
-                }
-               */
+                }  */
+
             }
 
 
-            inputFrame.put(0, 0, comp);
+           inputFrame.put(0, 0, comp_nl);
 
             return inputFrame;
 
