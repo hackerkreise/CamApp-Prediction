@@ -10,6 +10,7 @@ import android.media.MediaScannerConnection;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -650,7 +651,7 @@ public class MainActivity extends AppCompatActivity {
         //cvtColor( inputFrame, cloneFrame, Imgproc.COLOR_RGBA2BGR, 3);
         Long size = inputFrame.total() * inputFrame.channels();
         int isize = size.intValue();
-        int iwidth = inputFrame.height();
+        int iwidth = inputFrame.height();  //height ist width, da landscape mode aktiv
         byte buff[] = new byte[isize];
         int mask = (0xFF);
         byte comp[] = new byte[isize];
@@ -687,19 +688,35 @@ public class MainActivity extends AppCompatActivity {
         }
         else{
 
+            Log.d("TAG", "size: " + isize + " width: " + iwidth + " height: " + inputFrame.width()+ " cols: " + inputFrame.cols());
             //hier muss nichtlineare Prädiktion rein!
             int pos = 0;
+            int itotalwidth = iwidth*channels;
+            int iwidth_counter = 0;
 
             for (byte b : buff) {
                 //in work
-                if ((pos > iwidth)) /*&& (byte) (b - temp[pos - channels] + 128)>=0 && (byte) (b - temp[pos - channels] + 128)<256)*/ {
+
+                for (int i =0; i<= inputFrame.cols(); i++)
+                    for(int j=0; i<= inputFrame.rows()*channels; j++) {
+                        if (pos != itotalwidth * i) {
+                            //testing
+                        }
+                    }
+
+           /*     if ((pos > itotalwidth))  {
                     //Abfangen ungültiger Werte führt zu komischen Ergebnis
 
-                    if( pos % iwidth  != 1 | pos % iwidth  != 2 | pos % iwidth  != 3 | pos % iwidth  != 4) { //erstes Byte pro Reihe auslassen (?)
+                    if( pos % itotalwidth  != 1 && pos % itotalwidth  != 2 && pos % itotalwidth  != 3 && pos % itotalwidth  != 4) { //erstes Byte pro Reihe auslassen (?)
+                    //    Log.d("TAGGG", "Pos: " + pos +" itotalwidth: " + String.valueOf(itotalwidth) + "    mod: " + String.valueOf(pos%itotalwidth));
                         temp[pos] = b;
-                        comp[pos] = (byte) (((b - temp[pos - iwidth] - /*temp[pos-iwidth-channels]*/ - temp[pos-channels] + 0x80 + 0x80 + 0x80)));
+                        comp[pos] = (byte) (((b - temp[pos - itotalwidth] - temp[pos-itotalwidth-channels] - temp[pos-channels] + 0x80 )));
                         //Aktuelles Byte B minus byte das darüber/links oben/links daneben steht + 3 * 128 aufaddieren
                     }
+
+
+
+
                     pos++;
                 } else {
 
@@ -708,6 +725,7 @@ public class MainActivity extends AppCompatActivity {
                     pos++;
 
                 }
+               */
             }
 
 
