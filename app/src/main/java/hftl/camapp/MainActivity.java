@@ -664,8 +664,7 @@ public class MainActivity extends AppCompatActivity {
         final int stride = inputFrame.width() * inputFrame.channels();
         inputFrame.get(0, 0, buff); //Bildmatrix wird in ein eindimensionales ByteArray gelegt im Format RGBA,RGBA,RGBA usw..
 
-      //  Log.d("TAG","Size: " + String.valueOf(isize) + " Width: " + String.valueOf(iwidth) + " Total: " + String.valueOf(isize/channels));
-
+   
 
         if (pred_linear==0) {
            int pos = 0;
@@ -691,8 +690,7 @@ public class MainActivity extends AppCompatActivity {
         }
         else{
 
-           // Log.d("TAG", "size: " + isize + " width: " + iwidth + " height: " + inputFrame.width()+ " cols: " + inputFrame.cols());
-            //hier muss nichtlineare Prädiktion rein!
+             //hier muss nichtlineare Prädiktion rein!
             int pos = 0;
             int iTotalHeight = iwidth*channels;
             int iwidth_counter = 0;
@@ -702,48 +700,15 @@ public class MainActivity extends AppCompatActivity {
 
                 try{
                     temp_nl[pos] = b;
-                //    comp[pos] = (byte) (((b - temp[pos - channels]) + (b-temp[pos-inputFrame.height()-channels]) + (b-temp[pos-inputFrame.height()]))/3 +0x80 );
-               //     comp_nl[pos] = (byte) ((b - (temp_nl[pos - iTotalHeight] + temp_nl[pos-channels] + temp_nl[pos-(iTotalHeight+channels)]) +0x80 ));
+                    //Aktuelles Byte wird mit den 3 umliegenden Bytes verglichen (oben, links oben und links)
                     comp_nl[pos] = (byte) ((b - temp_nl[pos-channels]) + (b-temp_nl[pos-iTotalHeight]) + (b - temp_nl[pos-iTotalHeight-channels]));
-                    comp_nl[pos] = (byte) (comp_nl[pos]/3+0x80);
+                    comp_nl[pos] = (byte) (comp_nl[pos]/3+0x80); //Durchschnitt des Fehlers berechnet (da mit 3 Bytes verglichen wird)
                     pos++;
-                } catch (ArrayIndexOutOfBoundsException e) { //für alle Werte, die außerhalb des arrays liegen, wird der Puffer nur gefüllt
+                } catch (ArrayIndexOutOfBoundsException e) { //für alle Werte, die außerhalb des arrays liegen, wird der Puffer nur gefüllt, damit trotzdem verglichen werden kann
                     temp_l[pos] = b;
                     comp_nl[pos] = b;
                     pos++;
                 }
-
-                /*if ((pos > iTotalHeight))  {
-                    //Abfangen ungültiger Werte führt zu komischen Ergebnis
-
-
-
-                    if( pos % iTotalHeight  != 0 && pos % iTotalHeight  != 1 && pos % iTotalHeight  != 2 && pos % iTotalHeight  != 3) { //erstes Byte pro Reihe auslassen (?)
-                    //    Log.d("TAGGG", "Pos: " + pos +" itotalwidth: " + String.valueOf(itotalwidth) + "    mod: " + String.valueOf(pos%itotalwidth));
-                        temp[pos] = b;
-                      //  comp[pos] = (byte) (((b - temp[pos - iTotalHeight-channels] - temp[pos-iTotalHeight] - temp[pos-channels] +0x80 )));
-                      //  comp[pos] = (byte) (((b - temp[pos - iTotalHeight-channels]) + (b - temp[pos-iTotalHeight]) +(b - temp[pos-channels])/3 +0x80 ));
-                        comp[pos] = (byte) ((b - temp[pos - iTotalHeight]));
-                        comp[pos] = (byte) ((b - temp[pos - iTotalHeight-channels]));
-                        comp[pos] = (byte) ((b - temp[pos-channels]));
-                        comp[pos] = (byte) ((comp[pos]/3)+0x80);
-                        //Aktuelles Byte B minus byte das darüber/links oben/links daneben steht + 3 * 128 aufaddieren
-
-                    } else {
-                        temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
-                        comp[pos] = b;
-                    }
-
-                    pos++;
-
-                } else {
-
-                    temp[pos] = b;      //Puffer füllen damit man überhaupt mit einem vorherigen Byte vergleichen kann bzw. abziehen kann.
-                    comp[pos] = b;
-                    pos++;
-
-                }  */
-
             }
 
 
